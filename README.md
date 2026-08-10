@@ -37,6 +37,23 @@ Apply `supabase/migrations/0001_init.sql` in the Supabase SQL editor
 (or `psql $DATABASE_URL -f supabase/migrations/0001_init.sql`).
 Creates: incidents, watchlist, pipeline, alert_rules, alert_log.
 
+## Scraper (Phase 1)
+
+```bash
+uv run python -m packages.scraper.run --backfill 12m   # one-time 12-month TH history import
+uv run python -m packages.scraper.run --once           # single poll cycle
+uv run python -m packages.scraper.run                  # scheduler: polls every 15 min
+```
+
+Source: ransomware.live API v2 free tier (endpoints `/countryvictims/TH`, `/recentvictims`;
+1 req/min politeness enforced, 62s spacing, 30s timeout, 429 backoff).
+
+## Tests
+
+```bash
+uv run pytest -q
+```
+
 ## Conventions
 
 - Python 3.12 + uv + ruff; Node + pnpm + prettier (Node phases only).
