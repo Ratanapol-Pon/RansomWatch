@@ -48,6 +48,20 @@ uv run python -m packages.scraper.run                  # scheduler: polls every 
 Source: ransomware.live API v2 free tier (endpoints `/countryvictims/TH`, `/recentvictims`;
 1 req/min politeness enforced, 62s spacing, 30s timeout, 429 backoff).
 
+## Discord bot (Phase 4)
+
+```bash
+make bot              # or: uv run python -m packages.bot.bot
+```
+
+Slash commands: `/latest`, `/victim`, `/group`, `/stats`, `/brief`, `/pipeline` (all users);
+`/watch`, `/unwatch`, `/pipeline_update` (admin role `DISCORD_ADMIN_ROLE_ID` only).
+Free-text Q&A: post in the `#ask-ransomwatch` channel (or set `DISCORD_ASK_CHANNEL_ID`).
+Answers come only from DB query tools via LLM tool-calling, always with `source_url`
+citations; the bot never invents incidents. Requires `LLM_API_KEY` + `LLM_MODEL`
+(OpenAI-compatible API; optional `LLM_BASE_URL` for other providers). Without them the
+slash commands still work and the chatbot replies with a not-configured message.
+
 ## Tests
 
 ```bash
