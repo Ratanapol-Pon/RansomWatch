@@ -15,12 +15,14 @@ class Settings(BaseSettings):
     discord_alert_channel_id: str = ""
     discord_webhook_url: str = ""
     discord_admin_role_id: str = ""
+    discord_ask_channel_id: str = ""
 
     resend_api_key: str = ""
     alert_email_from: str = ""
 
     llm_api_key: str = ""
     llm_model: str = ""
+    llm_base_url: str = ""
 
     ransomware_live_base: str = "https://api.ransomware.live/v2"
     tz_display: str = "Asia/Bangkok"

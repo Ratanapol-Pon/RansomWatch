@@ -135,9 +135,7 @@ def ingest_payloads(
             )
             result.watchlist_hits += 1
             result.pipeline_rows += 1
-            logger.warning(
-                "WATCHLIST HIT: %s matched %s", data["victim_name"], entry.name
-            )
+            logger.warning("WATCHLIST HIT: %s matched %s", data["victim_name"], entry.name)
 
         emit(
             "incident.created",
