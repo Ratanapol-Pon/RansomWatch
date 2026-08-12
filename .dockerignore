@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.log
+.git/
+.gitignore
+tests/
+supabase/
+infra/
+*.png
+OPENCODE_PROMPTS.md
+RANSOMWATCH_TH_PLAN.md

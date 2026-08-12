@@ -106,6 +106,44 @@ supabase secrets set DISCORD_WEBHOOK_URL=... DISCORD_ADMIN_ROLE_ID=... \
 Then create a Supabase Database Webhook on `incidents` INSERT pointing at the
 function URL with header `x-webhook-secret: $ALERT_DISPATCHER_SECRET`.
 
+## Deployment (Railway)
+
+Two always-on services run from one repo + one root `Dockerfile`
+(`python:3.12-slim` + `uv sync --frozen --no-dev`). No `.env` is baked into the
+image — all config comes from Railway environment variables. Supabase stays the
+DB; `DATABASE_URL` must be the Supabase pooler URL (publicly reachable).
+
+| Railway service | Start command                              | Env vars to set                                                                                                                          |
+| --------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `bot`           | `python -m packages.bot.bot` (image default) | `DATABASE_URL`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_ADMIN_ROLE_ID`, `DISCORD_ASK_CHANNEL_ID`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`, `TZ_DISPLAY` |
+| `scraper`       | `python -m packages.scraper.run` (override)  | `DATABASE_URL`, `RANSOMWARE_LIVE_BASE`, `TZ_DISPLAY`                                                                                     |
+
+Deploy steps: Railway dashboard → New Project → Deploy from GitHub repo
+(`Ratanapol-Pon/RansomWatch`) → it detects the root `Dockerfile`. Add a second
+service from the same repo; in its Settings → Deploy → Custom Start Command set
+the scraper command above. Paste env vars per service (Settings → Variables).
+Railway auto-restarts crashed processes by default (restart policy: On Failure,
+max 10 retries — Settings → Deploy).
+
+### Runbook
+
+- **Logs:** Railway dashboard → service → Deployments → View Logs (live tail).
+  Scraper logs `poll done: country=X/Y new, recent=X/Y new` every 15 min;
+  bot logs `logged in as RansomWatch TH#…` + `slash commands synced` on boot.
+- **Restart:** service → Settings → Restart (or push a commit — auto-redeploys).
+- **Redeploy previous version:** Deployments → pick older deploy → Redeploy.
+- **Rotate keys:**
+  1. `DISCORD_BOT_TOKEN`: Discord Dev Portal → Bot → Reset Token → update the
+     `bot` service variable (service restarts automatically on variable change).
+  2. `DATABASE_URL`: Supabase → Settings → Database → reset password → update
+     BOTH `bot` and `scraper` variables + any local `.env`.
+  3. `LLM_API_KEY`: provider console → new key → update `bot` variable.
+  4. Alert secrets (`DISCORD_WEBHOOK_URL`, `RESEND_API_KEY`,
+     `ALERT_DISPATCHER_SECRET`): `supabase secrets set …` — no Railway change
+     needed (alerts run in Supabase Edge Functions, not Railway).
+- **Add a new source:** new collector in `packages/scraper/collectors/`, wire
+  into `poll_once`, push — the `scraper` service auto-redeploys.
+
 ## Tests
 
 ```bash
