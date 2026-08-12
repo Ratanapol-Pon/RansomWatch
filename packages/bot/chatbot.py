@@ -50,23 +50,26 @@ def run_chat(
         if not response.tool_calls:
             return (response.content or "").strip() or NO_DATA_FALLBACK
 
-        messages.append(
-            {
-                "role": "assistant",
-                "content": response.content,
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {
-                            "name": tc.name,
-                            "arguments": json.dumps(tc.arguments, ensure_ascii=False),
-                        },
-                    }
-                    for tc in response.tool_calls
-                ],
-            }
-        )
+        if response.raw_message is not None:
+            messages.append(response.raw_message)
+        else:
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": response.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.name,
+                                "arguments": json.dumps(tc.arguments, ensure_ascii=False),
+                            },
+                        }
+                        for tc in response.tool_calls
+                    ],
+                }
+            )
         for tc in response.tool_calls:
             result = dispatch_tool(tc.name, tc.arguments, q)
             messages.append(

@@ -15,6 +15,7 @@ class ToolCall:
 class LLMResponse:
     content: str | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
+    raw_message: dict[str, Any] | None = None
 
 
 class LLM(Protocol):
@@ -50,7 +51,9 @@ class OpenAILLM:
             )
             for tc in (msg.tool_calls or [])
         ]
-        return LLMResponse(content=msg.content, tool_calls=calls)
+        raw = msg.model_dump(exclude_none=True)
+        raw["content"] = raw.get("content") or ""
+        return LLMResponse(content=msg.content, tool_calls=calls, raw_message=raw)
 
 
 def _parse_args(raw: str | None) -> dict[str, Any]:
