@@ -16,4 +16,9 @@ COPY apps/ apps/
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["python", "-m", "packages.bot.bot"]
+# SERVICE_MODULE selects which service to run:
+#   bot service      -> default (packages.bot.bot)
+#   scraper service  -> set SERVICE_MODULE=packages.scraper.run in Railway variables
+ENV SERVICE_MODULE=packages.bot.bot
+
+CMD python -m "$SERVICE_MODULE"
