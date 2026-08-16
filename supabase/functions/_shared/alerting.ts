@@ -109,12 +109,14 @@ function base64Utf8(s: string): string {
 }
 
 /**
- * Clearnet ransomware.live equivalent of a Tor (.onion) leak-site URL.
- * Verified against the live site (2026-08-16):
- *   /id/<base64("victim@group")> -> 200 (per-victim page, e.g. KT RESTAURANT)
- *   /group/<group>               -> 200 (group page, e.g. /group/majinahanashi)
- *   /victim/<name>               -> 404 (route does NOT exist)
- *   nonexistent /id/<...>        -> 404 (server validates the id)
+ * Clearnet ransomware.live links. Verified in a real browser (2026-08-16):
+ * ransomware.live is a hash-routed SPA — there is NO server-side /victims
+ * route. Working patterns:
+ *   /id/<base64("victim@group")>  per-victim page, e.g.
+ *     KT RESTAURANT + majinahanashi ->
+ *     https://www.ransomware.live/id/S1QgUkVTVEFVUkFOVEBtYWppbmFoYW5hc2hp
+ *   /#/group/<group>              group page (fallback when uncertain)
+ * Standard base64 (UTF-8), matching the site's encoding exactly.
  */
 export function clearnetSourceUrl(
   victimName: string | null,
@@ -126,7 +128,7 @@ export function clearnetSourceUrl(
   if (victim) {
     return `https://www.ransomware.live/id/${base64Utf8(`${victim}@${group}`)}`;
   }
-  return `https://www.ransomware.live/group/${encodeURIComponent(group)}`;
+  return `https://www.ransomware.live/#/group/${encodeURIComponent(group)}`;
 }
 
 export interface SourceDisplay {
@@ -134,17 +136,27 @@ export interface SourceDisplay {
   tor: boolean;
 }
 
+export function isRansomwareLiveSource(incident: Incident): boolean {
+  const src = (incident.source ?? "").toLowerCase();
+  const url = (incident.source_url ?? "").toLowerCase();
+  return (
+    src.includes("ransomware") ||
+    url.includes("ransomware.live") ||
+    url.includes(".onion")
+  );
+}
+
 /**
- * Display-ready source for alerts/bot output. The original .onion URL stays in
- * incidents.source_url/raw for audit; only the rendered link is replaced.
+ * Display-ready source for alerts/bot output. ALL ransomware.live-sourced
+ * incidents render the canonical clearnet /id/ (or #/group/) link — the
+ * original source_url (incl. .onion) stays in incidents.source_url/raw for
+ * audit. The Tor note is added only when the original link was a .onion.
  */
 export function displaySource(incident: Incident): SourceDisplay {
   const url = incident.source_url;
-  if (url && url.includes(".onion")) {
-    return {
-      url: clearnetSourceUrl(incident.victim_name, incident.group_name),
-      tor: true,
-    };
+  if (isRansomwareLiveSource(incident)) {
+    const clearnet = clearnetSourceUrl(incident.victim_name, incident.group_name);
+    return { url: clearnet ?? url, tor: !!url && url.includes(".onion") };
   }
   return { url, tor: false };
 }

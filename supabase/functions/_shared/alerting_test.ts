@@ -22,7 +22,7 @@ const baseIncident: Incident = {
   group_name: "LockBit",
   sector: "Manufacturing",
   country: "TH",
-  source: "ransomware.live",
+  source: "manual",
   source_url: "https://example.com/victim/1",
   discovered_at: "2024-01-15T05:30:00Z",
   watchlist_hit: false,
@@ -127,18 +127,20 @@ const onionIncident: Incident = {
   ...baseIncident,
   victim_name: "KT RESTAURANT",
   group_name: "majinahanashi",
+  source: "ransomware_live",
   source_url: KT_ONION,
 };
 
 test("clearnetSourceUrl: per-victim page is base64(victim@group)", () => {
+  // byte-for-byte vs the verified live-site example
   assert.equal(
     clearnetSourceUrl("KT RESTAURANT", "majinahanashi"),
     KT_CLEARNET,
   );
-  // group page fallback when no victim name
+  // hash-routed group page fallback when no victim name
   assert.equal(
     clearnetSourceUrl(null, "lockbit"),
-    "https://www.ransomware.live/group/lockbit",
+    "https://www.ransomware.live/#/group/lockbit",
   );
   // no usable group -> no link
   assert.equal(clearnetSourceUrl("Some Victim", null), null);
@@ -154,6 +156,24 @@ test("displaySource: .onion replaced by clearnet, flagged as tor", () => {
   const clean = displaySource(baseIncident);
   assert.equal(clean.tor, false);
   assert.equal(clean.url, baseIncident.source_url);
+});
+
+test("displaySource: ALL ransomware.live incidents get the clearnet /id/ link", () => {
+  const rl: Incident = {
+    ...baseIncident,
+    source: "ransomware_live",
+    source_url: "https://www.ransomware.live/some/page",
+  };
+  const d = displaySource(rl);
+  assert.equal(
+    d.url,
+    "https://www.ransomware.live/id/VGhhaSBFeGFtcGxlIENvQExvY2tCaXQ=",
+  );
+  assert.equal(d.tor, false); // no Tor note for non-onion originals
+
+  // unknown group -> keep original url rather than a broken link
+  const noGroup = displaySource({ ...rl, group_name: "unknown" });
+  assert.equal(noGroup.url, rl.source_url);
 });
 
 test("buildDiscordPayload: onion source shows clearnet link + plain-text note", () => {
