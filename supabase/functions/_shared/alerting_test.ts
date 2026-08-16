@@ -5,12 +5,15 @@ import {
   type AlertRule,
   buildDiscordPayload,
   buildEmail,
+  clearnetSourceUrl,
   COLOR_NORMAL_ORANGE,
   COLOR_WATCHLIST_RED,
   dispatchIncidentAlerts,
+  displaySource,
   formatBangkok,
   type Incident,
   ruleMatches,
+  TOR_SOURCE_NOTE,
 } from "./alerting.ts";
 
 const baseIncident: Incident = {
@@ -112,6 +115,64 @@ test("buildEmail: subject format and watchlist row", () => {
   const hit = buildEmail({ ...baseIncident, watchlist_hit: true });
   assert.ok(hit.html.includes("WATCHLIST MATCH"));
   assert.ok(hit.html.includes(baseIncident.source_url ?? ""));
+});
+
+// Real KT RESTAURANT incident values (2026-07-09, group majinahanashi).
+const KT_ONION =
+  "http://lthicpjqc7gkn5eq3epxndc2uig3yngvcbdya4u3m3byjod5km4yuwqd.onion/#post/blog-3";
+const KT_CLEARNET =
+  "https://www.ransomware.live/id/S1QgUkVTVEFVUkFOVEBtYWppbmFoYW5hc2hp";
+
+const onionIncident: Incident = {
+  ...baseIncident,
+  victim_name: "KT RESTAURANT",
+  group_name: "majinahanashi",
+  source_url: KT_ONION,
+};
+
+test("clearnetSourceUrl: per-victim page is base64(victim@group)", () => {
+  assert.equal(
+    clearnetSourceUrl("KT RESTAURANT", "majinahanashi"),
+    KT_CLEARNET,
+  );
+  // group page fallback when no victim name
+  assert.equal(
+    clearnetSourceUrl(null, "lockbit"),
+    "https://www.ransomware.live/group/lockbit",
+  );
+  // no usable group -> no link
+  assert.equal(clearnetSourceUrl("Some Victim", null), null);
+  assert.equal(clearnetSourceUrl("Some Victim", "unknown"), null);
+});
+
+test("displaySource: .onion replaced by clearnet, flagged as tor", () => {
+  const d = displaySource(onionIncident);
+  assert.equal(d.tor, true);
+  assert.equal(d.url, KT_CLEARNET);
+  assert.ok(!d.url?.includes(".onion"));
+
+  const clean = displaySource(baseIncident);
+  assert.equal(clean.tor, false);
+  assert.equal(clean.url, baseIncident.source_url);
+});
+
+test("buildDiscordPayload: onion source shows clearnet link + plain-text note", () => {
+  const p = buildDiscordPayload(onionIncident, "role-123") as {
+    embeds: { fields: { name: string; value: string }[] }[];
+  };
+  const discovered = p.embeds[0].fields.find((f) => f.name === "Discovered");
+  assert.ok(discovered);
+  assert.ok(discovered.value.includes(KT_CLEARNET));
+  assert.ok(discovered.value.includes(TOR_SOURCE_NOTE));
+  assert.ok(!discovered.value.includes(".onion"));
+});
+
+test("buildEmail: onion source shows clearnet link + plain-text note", () => {
+  const { html } = buildEmail(onionIncident);
+  assert.ok(html.includes(`<a href="${KT_CLEARNET}">${KT_CLEARNET}</a>`));
+  // note is plain text outside the anchor
+  assert.ok(html.includes(`</a> ${TOR_SOURCE_NOTE}`));
+  assert.ok(!html.includes(".onion"));
 });
 
 interface MockDepsOptions {

@@ -100,11 +100,62 @@ export function formatBangkok(isoUtc: string | null): string {
 export const COLOR_WATCHLIST_RED = 0xe74c3c;
 export const COLOR_NORMAL_ORANGE = 0xe67e22;
 
+export const TOR_SOURCE_NOTE = "(original source: Tor leak site)";
+
+function base64Utf8(s: string): string {
+  let bin = "";
+  for (const b of new TextEncoder().encode(s)) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+
+/**
+ * Clearnet ransomware.live equivalent of a Tor (.onion) leak-site URL.
+ * Verified against the live site (2026-08-16):
+ *   /id/<base64("victim@group")> -> 200 (per-victim page, e.g. KT RESTAURANT)
+ *   /group/<group>               -> 200 (group page, e.g. /group/majinahanashi)
+ *   /victim/<name>               -> 404 (route does NOT exist)
+ *   nonexistent /id/<...>        -> 404 (server validates the id)
+ */
+export function clearnetSourceUrl(
+  victimName: string | null,
+  groupName: string | null,
+): string | null {
+  const group = (groupName ?? "").trim();
+  if (!group || group.toLowerCase() === "unknown") return null;
+  const victim = (victimName ?? "").trim();
+  if (victim) {
+    return `https://www.ransomware.live/id/${base64Utf8(`${victim}@${group}`)}`;
+  }
+  return `https://www.ransomware.live/group/${encodeURIComponent(group)}`;
+}
+
+export interface SourceDisplay {
+  url: string | null;
+  tor: boolean;
+}
+
+/**
+ * Display-ready source for alerts/bot output. The original .onion URL stays in
+ * incidents.source_url/raw for audit; only the rendered link is replaced.
+ */
+export function displaySource(incident: Incident): SourceDisplay {
+  const url = incident.source_url;
+  if (url && url.includes(".onion")) {
+    return {
+      url: clearnetSourceUrl(incident.victim_name, incident.group_name),
+      tor: true,
+    };
+  }
+  return { url, tor: false };
+}
+
 export function buildDiscordPayload(
   incident: Incident,
   adminRoleId: string,
 ): Record<string, unknown> {
   const hit = incident.watchlist_hit === true;
+  const src = displaySource(incident);
+  const srcText = `${src.url ?? "n/a"}${src.tor ? ` ${TOR_SOURCE_NOTE}` : ""}`;
   const fields = [
     {
       name: "Victim",
@@ -114,7 +165,7 @@ export function buildDiscordPayload(
     { name: "Group", value: incident.group_name ?? "unknown", inline: true },
     {
       name: "Discovered",
-      value: `${formatBangkok(incident.discovered_at)} | Source: ${incident.source_url ?? "n/a"}`,
+      value: `${formatBangkok(incident.discovered_at)} | Source: ${srcText}`,
       inline: false,
     },
   ];
@@ -143,6 +194,10 @@ export function buildEmail(incident: Incident): {
   html: string;
 } {
   const subject = `[RansomWatch TH] ${incident.victim_name} hit by ${incident.group_name ?? "unknown group"}`;
+  const src = displaySource(incident);
+  const srcCell = src.url
+    ? `<a href="${src.url}">${src.url}</a>${src.tor ? ` ${TOR_SOURCE_NOTE}` : ""}`
+    : `n/a${src.tor ? ` ${TOR_SOURCE_NOTE}` : ""}`;
   const watchlistRow = incident.watchlist_hit
     ? `<tr><td style="padding:4px 12px 4px 0;color:#c0392b"><b>⚠️ WATCHLIST MATCH</b></td><td>pipeline row created</td></tr>`
     : "";
@@ -154,7 +209,7 @@ export function buildEmail(incident: Incident): {
 <tr><td style="padding:4px 12px 4px 0"><b>Sector</b></td><td>${incident.sector ?? "unknown"}</td></tr>
 <tr><td style="padding:4px 12px 4px 0"><b>Group</b></td><td>${incident.group_name ?? "unknown"}</td></tr>
 <tr><td style="padding:4px 12px 4px 0"><b>Discovered</b></td><td>${formatBangkok(incident.discovered_at)}</td></tr>
-<tr><td style="padding:4px 12px 4px 0"><b>Source</b></td><td><a href="${incident.source_url ?? "#"}">${incident.source_url ?? "n/a"}</a></td></tr>
+<tr><td style="padding:4px 12px 4px 0"><b>Source</b></td><td>${srcCell}</td></tr>
 <tr><td style="padding:4px 12px 4px 0"><b>Status</b></td><td>${incident.status ?? "unverified"}</td></tr>
 ${watchlistRow}
 </table>
