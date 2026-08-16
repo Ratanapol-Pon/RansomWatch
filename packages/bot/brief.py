@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from packages.bot.formatting import display_source
 from packages.bot.stats import count_by_group, filter_topic, in_period, period_days, trend
 from packages.shared.models import Incident
 from packages.shared.timeutils import format_bangkok, utcnow
@@ -7,8 +8,7 @@ from packages.shared.timeutils import format_bangkok, utcnow
 
 def _incident_ref(i: Incident) -> str:
     when = format_bangkok(i.discovered_at) if i.discovered_at else "unknown time"
-    url = i.source_url or "no source url"
-    return f"{i.victim_name} hit by {i.group_name or 'unknown'} ({when}) — {url}"
+    return f"{i.victim_name} hit by {i.group_name or 'unknown'} ({when}) — {display_source(i)}"
 
 
 def build_brief(
