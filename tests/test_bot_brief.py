@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from packages.bot.brief import build_brief
+from packages.bot.formatting import clearnet_source_url
 from tests.test_bot_stats import make_incident
 
 NOW = datetime(2026, 8, 11, 12, 0, tzinfo=UTC)
@@ -27,7 +28,8 @@ def test_brief_max_five_bullets_all_claims_sourced():
     joined = "\n".join(bullets)
     assert "6 ransomware victim(s)" in bullets[0]
     assert "lockbit (6)" in joined
-    assert "https://example.com/v/" in joined
+    # rl-sourced incidents render the canonical clearnet /id/ link
+    assert "https://www.ransomware.live/id/" in joined
     assert bullets[-1].startswith("Trend:")
 
 
@@ -43,7 +45,7 @@ def test_brief_watchlist_incident_prioritized_and_flagged():
     watchlist_bullets = [b for b in bullets if b.startswith("WATCHLIST:")]
     assert len(watchlist_bullets) == 1
     assert "Watched Co" in watchlist_bullets[0]
-    assert "https://example.com/watched" in watchlist_bullets[0]
+    assert clearnet_source_url("Watched Co", "lockbit") in watchlist_bullets[0]
 
 
 def test_brief_topic_scoping():

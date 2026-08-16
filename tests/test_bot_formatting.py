@@ -19,7 +19,8 @@ KT_CLEARNET = "https://www.ransomware.live/id/S1QgUkVTVEFVUkFOVEBtYWppbmFoYW5hc2
 
 
 def test_incident_line_contains_source_and_bangkok_time():
-    i = make_incident(discovered_at=NOW, watchlist_hit=True)
+    # non-ransomware.live source: original url passes through unchanged
+    i = make_incident(discovered_at=NOW, watchlist_hit=True, source="manual")
     line = incident_line(i)
     assert "Victim Co" in line
     assert "lockbit" in line
@@ -28,9 +29,21 @@ def test_incident_line_contains_source_and_bangkok_time():
     assert "WATCHLIST" in line
 
 
+def test_incident_line_ransomware_live_source_shows_clearnet_id_link():
+    # rl-sourced non-onion: still rewritten to the canonical /id/ page
+    i = make_incident(discovered_at=NOW)
+    line = incident_line(i)
+    expected = clearnet_source_url("Victim Co", "lockbit")
+    assert expected in line
+    assert "example.com" not in line
+    assert TOR_SOURCE_NOTE not in line  # no Tor note for non-onion originals
+
+
 def test_clearnet_source_url_victim_and_group_fallback():
+    # byte-for-byte vs the verified live-site example
     assert clearnet_source_url("KT RESTAURANT", "majinahanashi") == KT_CLEARNET
-    assert clearnet_source_url(None, "lockbit") == "https://www.ransomware.live/group/lockbit"
+    # hash-routed group page fallback when no victim name
+    assert clearnet_source_url(None, "lockbit") == "https://www.ransomware.live/#/group/lockbit"
     assert clearnet_source_url("Some Victim", None) is None
     assert clearnet_source_url("Some Victim", "unknown") is None
 
@@ -52,8 +65,8 @@ def test_display_source_onion_without_known_group():
     assert TOR_SOURCE_NOTE in out
 
 
-def test_display_source_clearnet_passthrough():
-    i = make_incident(source_url="https://example.com/v/1")
+def test_display_source_non_rl_passthrough():
+    i = make_incident(source_url="https://example.com/v/1", source="manual")
     assert display_source(i) == "https://example.com/v/1"
     i.source_url = None
     assert display_source(i) == "no source url"

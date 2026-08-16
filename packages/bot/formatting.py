@@ -9,12 +9,14 @@ TOR_SOURCE_NOTE = "(original source: Tor leak site)"
 
 
 def clearnet_source_url(victim_name: str | None, group_name: str | None) -> str | None:
-    """Clearnet ransomware.live equivalent of a Tor (.onion) leak-site URL.
-
-    Verified against the live site (2026-08-16):
-      /id/<base64("victim@group")> -> 200 (per-victim page, e.g. KT RESTAURANT)
-      /group/<group>               -> 200 (group page, e.g. /group/majinahanashi)
-      /victim/<name>               -> 404 (route does NOT exist)
+    """Clearnet ransomware.live links. Verified in a real browser (2026-08-16):
+    ransomware.live is a hash-routed SPA — there is NO server-side /victims
+    route. Working patterns:
+      /id/<base64("victim@group")>  per-victim page, e.g.
+        KT RESTAURANT + majinahanashi ->
+        https://www.ransomware.live/id/S1QgUkVTVEFVUkFOVEBtYWppbmFoYW5hc2hp
+      /#/group/<group>              group page (fallback when uncertain)
+    Standard base64 (UTF-8), matching the site's encoding exactly.
     """
     group = (group_name or "").strip()
     if not group or group.lower() == "unknown":
@@ -23,18 +25,30 @@ def clearnet_source_url(victim_name: str | None, group_name: str | None) -> str 
     if victim:
         vid = base64.b64encode(f"{victim}@{group}".encode()).decode()
         return f"https://www.ransomware.live/id/{vid}"
-    return f"https://www.ransomware.live/group/{group}"
+    return f"https://www.ransomware.live/#/group/{group}"
+
+
+def is_ransomware_live_source(i: Incident) -> bool:
+    src = (i.source or "").lower()
+    url = (i.source_url or "").lower()
+    return "ransomware" in src or "ransomware.live" in url or ".onion" in url
 
 
 def display_source(i: Incident) -> str:
-    """Display-ready source link. The original .onion URL stays in
-    incidents.source_url/raw for audit; only the rendered link is replaced."""
+    """Display-ready source link. ALL ransomware.live-sourced incidents render
+    the canonical clearnet /id/ (or #/group/) link — the original source_url
+    (incl. .onion) stays in incidents.source_url/raw for audit. The Tor note
+    is added only when the original link was a .onion."""
     url = i.source_url
-    if url and ".onion" in url:
+    if is_ransomware_live_source(i):
+        tor = bool(url) and ".onion" in url
+        note = f" {TOR_SOURCE_NOTE}" if tor else ""
         clearnet = clearnet_source_url(i.victim_name, i.group_name)
         if clearnet:
-            return f"{clearnet} {TOR_SOURCE_NOTE}"
-        return f"no clearnet link available {TOR_SOURCE_NOTE}"
+            return f"{clearnet}{note}"
+        if tor:
+            return f"no clearnet link available{note}"
+        return url or "no source url"
     return url or "no source url"
 
 
