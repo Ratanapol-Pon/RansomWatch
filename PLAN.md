@@ -1,5 +1,46 @@
 # RansomWatch TH — Phased Build Plan (for opencode / VSCode)
 
+## Approved expansion — 2026-09-10
+
+The owner approved starting the first upgrade phase and requested a separate
+`dark_web_url` column. Upgrade numbering below is separate from the original MVP
+phase numbers retained in this document. The existing tech stack is unchanged.
+
+| Upgrade | Scope | Status |
+|---|---|---|
+| 1 | Data foundation, evidence identity, accurate dates, dark-web URL metadata | Implementation and local verification; see [runbook](docs/UPGRADE_PHASE_1.md) |
+| 2 | ThaiCERT/news and KEV collectors, classification and source health | Implemented and locally verified; see [runbook](docs/UPGRADE_PHASE_2.md) |
+| 3 | Authenticated dashboard (including dark-web URL column), filtered API, watchlists and private BD pipeline | Implemented and locally verified; see [runbook](docs/UPGRADE_PHASE_3_4.md) |
+| 4 | LINE Official Account group bot, subscriptions and quota controls | Implemented and locally verified; English monthly summaries by default |
+| 5 | Deployment hardening and pilot | Container configuration and runbook prepared; GitHub push approved; live deployment/pilot pending configuration and migrations |
+
+Confirmed delivery preference: Discord alerts immediately when a new eligible
+incident is ingested; LINE sends English monthly summaries (first day, 08:00
+Asia/Bangkok). LINE scheduling is independent of Discord. Public-source publication
+and collector polling determine detection latency; this does not promise detection
+at the exact time an attack occurs.
+
+Upgrade 1 supersedes the old company/group deduplication rule in §3 and automatic
+ThaiCERT confirmation in the legacy backlog. Incidents require victim metadata;
+campaigns and advisories live in a separate `threat_reports` table and do not count
+as victim incidents. Sources start as claimed/reported until evidence is reviewed.
+Historical imports are stored with alerts suppressed. The dark-web URL is optional,
+HTTP(S) `.onion` link metadata, separate from `source_url`; it is not crawled.
+
+Upgrade 1 acceptance: migration preserves incident IDs and BD links; repeat imports
+create no duplicates; distinct dated attacks survive; explicit attack dates are kept;
+publication dates are separate; onion URLs validate and round-trip; historical imports
+send no alerts; advisories do not affect victim counts; new tables are private.
+
+The remainder describes the original MVP and is retained as historical context.
+
+Upgrade 2 acceptance: live ThaiCERT and KEV feeds parse; repeated report imports do
+not duplicate records; corrections update the same source record; Thai/English news
+classification is reviewable; malformed feeds fail visibly; one feed failure does
+not stop others; retry delays and source freshness are recorded; news and advisories
+do not create victim incidents or alerts. Optional additional RSS sources require
+explicit configuration. Dashboard access and review actions are Upgrade 3.
+
 > **One-line pitch:** A monitoring + alerting tool that tracks Thai companies hit by
 > ransomware, aggregates data from public APIs and web scraping, and pushes real-time
 > alerts to Discord (with an interactive chatbot) and email — doubling as a JasTel BD

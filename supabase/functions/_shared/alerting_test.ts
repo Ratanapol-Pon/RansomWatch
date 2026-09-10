@@ -76,6 +76,12 @@ test("ruleMatches: disabled rule never matches", () => {
   assert.equal(ruleMatches(rule({ enabled: false }), baseIncident), false);
 });
 
+test("historical imports never match alerts, even for watchlist hits", () => {
+  const incident = { ...baseIncident, watchlist_hit: true, alert_eligible: false };
+  assert.equal(ruleMatches(rule({}), incident), false);
+  assert.equal(ruleMatches(rule({ match_mode: "watchlist_only" }), incident), false);
+});
+
 test("formatBangkok converts UTC to ICT", () => {
   assert.equal(formatBangkok("2024-01-15T05:30:00Z"), "2024-01-15 12:30 ICT");
   assert.equal(formatBangkok(null), "unknown");

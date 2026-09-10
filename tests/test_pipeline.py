@@ -31,13 +31,38 @@ def test_map_victim_ransomware_live_payload():
     assert data["group_name"] == "panzer"
     assert data["domain"] == "minorfood.com"
     assert data["sector"] == "Agriculture and Food Production"
-    assert data["attack_date"].isoformat() == "2026-08-10"
+    assert data["attack_date"] is None
+    assert data["published_at"].isoformat() == "2026-08-10T10:37:11+00:00"
+    assert data["dark_web_url"] == payload["post_url"]
     assert data["source_url"].endswith("/company/th")
     assert data["raw"] is payload
 
 
 def test_map_victim_rejects_missing_name():
     assert map_victim({"group_name": "x"}) is None
+
+
+def test_explicit_attack_date_and_public_source_are_separate():
+    data = map_victim(
+        {
+            "post_title": "Example",
+            "published": "2026-09-10T12:00:00Z",
+            "attackdate": "2026-09-01",
+            "source_url": "https://example.com/report",
+            "post_url": "http://actor.onion/leak/1",
+        }
+    )
+    assert data["attack_date"].isoformat() == "2026-09-01"
+    assert data["source_url"] == "https://example.com/report"
+    assert data["dark_web_url"] == "http://actor.onion/leak/1"
+    assert data["group_name"] is None
+    assert data["country"] == ""
+
+
+def test_news_is_not_automatically_ransomware_or_confirmed():
+    data = map_victim({"victim_name": "Example", "confidence": "confirmed"}, "thaicert")
+    assert data["attack_types"] == ["other"]
+    assert data["confidence"] == "reported"
 
 
 def test_match_watchlist_by_alias_substring():

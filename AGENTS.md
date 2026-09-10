@@ -8,8 +8,10 @@ You are building RansomWatch TH per PLAN.md in this repo. Rules:
 3. Do not change the tech stack decisions in PLAN.md §2 without asking.
 4. Never commit secrets. All config comes from .env; update .env.example when
    you add a variable.
-5. Every collector must: dedup against (normalized_name, group_name), store the
-   raw payload, and never crash the scheduler loop on error.
+5. Upgrade 1 supersedes the legacy company/group dedup rule: dedup by source record
+   identity; merge across sources only with corroborating dated evidence. Store the
+   raw source payload, preserve repeat attacks, and never crash the scheduler loop.
+   See docs/UPGRADE_PHASE_1.md for migration order and acceptance evidence.
 6. All timestamps: store UTC, display/schedule Asia/Bangkok.
 7. Alerts (Phase 3) run via Supabase Edge Function + Discord webhook + Resend.
    Do NOT build a persistent bot server until Phase 4.

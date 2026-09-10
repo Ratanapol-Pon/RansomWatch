@@ -9,6 +9,8 @@ export interface Incident {
   discovered_at: string | null;
   watchlist_hit: boolean;
   status: string | null;
+  dark_web_url?: string | null;
+  alert_eligible?: boolean;
 }
 
 export interface AlertRule {
@@ -53,6 +55,7 @@ export interface DispatchSummary {
 }
 
 export function ruleMatches(rule: AlertRule, incident: Incident): boolean {
+  if (incident.alert_eligible === false) return false;
   if (rule.enabled === false) return false;
   switch (rule.match_mode) {
     case "any_thailand":

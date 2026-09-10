@@ -1,7 +1,53 @@
 # RansomWatch TH
 
-Monitoring + alerting for Thai ransomware victims, with a BD follow-up pipeline.
+Public-source cyberattack monitoring, an authenticated dashboard, LINE group
+summaries, and a private BD follow-up pipeline, with a focus on Thailand.
 Stack and phases are defined in `PLAN.md` (source of truth). Agent rules in `AGENTS.md`.
+
+## Broader threat monitoring upgrade
+
+Upgrade 1 adds the data foundation for additional attack types, separate campaign and
+advisory records, source-evidence deduplication, accurate publication/attack dates, and
+the optional `dark_web_url` column. Historical imports suppress alerts.
+
+**Existing installations must apply the new migration before running upgraded code.**
+See [Upgrade 1 rollout and verification](docs/UPGRADE_PHASE_1.md).
+
+Upgrade 2 adds **CISA KEV**, **ThaiCERT RSS**, and configurable additional RSS/Atom
+feeds, with Thai/English attack tags, CVE extraction, a news review queue, and source
+health/backoff. Reports are stored separately from victim incidents. See the
+[Upgrade 2 runbook](docs/UPGRADE_PHASE_2.md) for setup and acceptance evidence.
+
+```bash
+uv run python -m packages.scraper.run --preview       # fetch new feeds, no DB writes
+uv run python -m packages.scraper.run --once          # ransomware + enabled new feeds
+uv run python -m packages.scraper.run --source-health # new-feed status and freshness
+```
+
+Upgrades 3–4 add the **dashboard and LINE group bot**, including the separate
+**Dark web URL** column, report review, source health, customer watchlists and
+private BD follow-up. New LINE groups default to **English monthly summaries**,
+scheduled on the **first day of the month at 08:00 Bangkok**, after activation.
+
+**Channel timing:** Discord dispatches each new eligible incident immediately after
+ingestion, subject to its enabled alert rules. LINE sends monthly summaries by
+default; its schedule and quiet hours do not delay Discord. Detection depends on
+source publication and polling (the ransomware collector polls every 15 minutes),
+so this is immediate on discovery, not necessarily at the time of the attack.
+
+Apply all three upgrade migrations before starting the new API and worker. See
+the [dashboard and LINE launch runbook](docs/UPGRADE_PHASE_3_4.md) for account
+setup, environment variables, Docker services, and verification results.
+Implementation is locally verified; hosted migration, deployment and a live LINE
+pilot have not yet been performed.
+
+```bash
+uv run python -m apps.api.main        # authenticated dashboard API + LINE webhook
+uv run python -m packages.line.worker # LINE commands and scheduled messages
+# In apps/web, after configuring .env.local:
+pnpm install --frozen-lockfile
+pnpm dev
+```
 
 ## Features (MVP — tags `phase-0`…`phase-4`, `mvp`)
 
@@ -30,8 +76,9 @@ Stack and phases are defined in `PLAN.md` (source of truth). Agent rules in `AGE
 ## Layout
 
 ```
-apps/api            FastAPI backend (GET /health)
-apps/web            Next.js PWA (Phase 2 - deferred, placeholder)
+apps/api            Authenticated FastAPI backend + LINE webhook
+apps/web            Next.js monitoring dashboard
+packages/line       LINE API client, durable inbox/outbox worker
 packages/scraper    Collectors + scheduler (Phase 1)
 packages/bot        discord.py bot (Phase 4)
 packages/shared     SQLAlchemy models, Pydantic schemas, config
@@ -113,15 +160,21 @@ Two always-on services run from one repo + one root `Dockerfile`
 image — all config comes from Railway environment variables. Supabase stays the
 DB; `DATABASE_URL` must be the Supabase pooler URL (publicly reachable).
 
-| Railway service | Start command                              | Env vars to set                                                                                                                          |
-| --------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `bot`           | `python -m packages.bot.bot` (image default) | `DATABASE_URL`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_ADMIN_ROLE_ID`, `DISCORD_ASK_CHANNEL_ID`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`, `TZ_DISPLAY` |
-| `scraper`       | `python -m packages.scraper.run` (override)  | `DATABASE_URL`, `RANSOMWARE_LIVE_BASE`, `TZ_DISPLAY`                                                                                     |
+| Railway service | `SERVICE_MODULE` variable        | Module run                  | Other env vars to set                                                                                                                    |
+| --------------- | -------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `bot`           | *(unset — Dockerfile default)*   | `packages.bot.bot`          | `DATABASE_URL`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DISCORD_ADMIN_ROLE_ID`, `DISCORD_ASK_CHANNEL_ID`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_BASE_URL`, `TZ_DISPLAY` |
+| `scraper`       | `packages.scraper.run`           | `packages.scraper.run`      | `DATABASE_URL`, `RANSOMWARE_LIVE_BASE`, `TZ_DISPLAY`                                                                                     |
+
+The image's `CMD` is `python -m ${SERVICE_MODULE:-packages.bot.bot}`: which
+service starts is selected by the `SERVICE_MODULE` env var, not by a Railway
+custom start command (the dashboard's Custom Start Command does not persist
+reliably, so it is not used). Leave `SERVICE_MODULE` unset on the `bot` service;
+set it to `packages.scraper.run` on the `scraper` service (Settings → Variables).
 
 Deploy steps: Railway dashboard → New Project → Deploy from GitHub repo
 (`Ratanapol-Pon/RansomWatch`) → it detects the root `Dockerfile`. Add a second
-service from the same repo; in its Settings → Deploy → Custom Start Command set
-the scraper command above. Paste env vars per service (Settings → Variables).
+service from the same repo and set `SERVICE_MODULE=packages.scraper.run` in its
+Variables. Paste the other env vars per service (Settings → Variables).
 Railway auto-restarts crashed processes by default (restart policy: On Failure,
 max 10 retries — Settings → Deploy).
 
