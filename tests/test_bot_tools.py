@@ -1,4 +1,3 @@
-from packages.bot.queries import PipelineOverview
 from packages.bot.tools import TOOL_SCHEMAS, dispatch_tool, result_to_json
 from tests.test_bot_stats import make_incident
 
@@ -19,13 +18,6 @@ class FakeQueries:
 
     def all_incidents(self):
         return self.incidents
-
-    def pipeline_overview(self):
-        return PipelineOverview(
-            companies_hit=2,
-            by_status={"not_contacted": 1, "contacted": 1},
-            rows=[],
-        )
 
 
 def test_tool_schemas_have_unique_names_and_valid_shape():
@@ -66,10 +58,9 @@ def test_dispatch_brief_returns_bullets():
     assert 1 <= len(result["bullets"]) <= 5
 
 
-def test_dispatch_pipeline_funnel():
-    result = dispatch_tool("get_pipeline", {}, FakeQueries())
-    assert result["companies_hit"] == 2
-    assert "2 watchlist companies hit" in result["funnel"]
+def test_retired_pipeline_tool_is_unavailable():
+    assert "get_pipeline" not in {t["function"]["name"] for t in TOOL_SCHEMAS}
+    assert "unknown tool" in dispatch_tool("get_pipeline", {}, FakeQueries())["error"]
 
 
 def test_dispatch_unknown_tool_returns_error():
@@ -88,3 +79,21 @@ def test_dispatch_tool_exception_is_captured_not_raised():
 
 def test_result_to_json_serializes():
     assert '"count": 0' in result_to_json({"count": 0})
+
+
+def test_discord_command_registration_excludes_retired_follow_up(monkeypatch):
+    import asyncio
+
+    from packages.bot.bot import RansomWatchBot
+    from packages.shared.config import Settings
+
+    monkeypatch.setattr("packages.bot.bot.build_llm", lambda settings: None)
+
+    async def inspect_commands():
+        async with RansomWatchBot(Settings(_env_file=None)) as bot:
+            bot._register_commands()
+            names = {command.name for command in bot.tree.get_commands()}
+            assert {"watch", "unwatch", "latest", "victim"} <= names
+            assert not {"pipeline", "pipeline_update"} & names
+
+    asyncio.run(inspect_commands())

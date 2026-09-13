@@ -187,7 +187,7 @@ export function buildDiscordPayload(
   if (hit) {
     fields.push({
       name: "⚠️ WATCHLIST MATCH",
-      value: `${incident.victim_name} — pipeline row created`,
+      value: `${incident.victim_name} — watchlist match`,
       inline: false,
     });
   }
@@ -214,7 +214,7 @@ export function buildEmail(incident: Incident): {
     ? `<a href="${src.url}">${src.url}</a>${src.tor ? ` ${TOR_SOURCE_NOTE}` : ""}`
     : `n/a${src.tor ? ` ${TOR_SOURCE_NOTE}` : ""}`;
   const watchlistRow = incident.watchlist_hit
-    ? `<tr><td style="padding:4px 12px 4px 0;color:#c0392b"><b>⚠️ WATCHLIST MATCH</b></td><td>pipeline row created</td></tr>`
+    ? `<tr><td style="padding:4px 12px 4px 0;color:#c0392b"><b>⚠️ WATCHLIST MATCH</b></td><td>watchlist match</td></tr>`
     : "";
   const html = `<!doctype html>
 <html><body style="font-family:Arial,sans-serif;color:#222">

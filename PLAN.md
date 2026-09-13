@@ -1,5 +1,13 @@
 # RansomWatch TH — Phased Build Plan (for opencode / VSCode)
 
+## Feature retirement ? 2026-09-13
+
+At the owner's request, remove BD follow-up from the dashboard, API, Discord
+commands, and AI tools, and stop creating follow-up rows. Retain the legacy table
+and records for history. Watchlists, incident monitoring, immediate Discord alerts,
+and English monthly LINE summaries remain supported. This supersedes all BD
+pipeline requirements in the historical MVP plan below.
+
 ## Approved expansion — 2026-09-10
 
 The owner approved starting the first upgrade phase and requested a separate
@@ -10,7 +18,7 @@ phase numbers retained in this document. The existing tech stack is unchanged.
 |---|---|---|
 | 1 | Data foundation, evidence identity, accurate dates, dark-web URL metadata | Implementation and local verification; see [runbook](docs/UPGRADE_PHASE_1.md) |
 | 2 | ThaiCERT/news and KEV collectors, classification and source health | Implemented and locally verified; see [runbook](docs/UPGRADE_PHASE_2.md) |
-| 3 | Authenticated dashboard (including dark-web URL column), filtered API, watchlists and private BD pipeline | Implemented and locally verified; see [runbook](docs/UPGRADE_PHASE_3_4.md) |
+| 3 | Authenticated dashboard (including dark-web URL column), filtered API, watchlists | Implemented and locally verified; see [runbook](docs/UPGRADE_PHASE_3_4.md) |
 | 4 | LINE Official Account group bot, subscriptions and quota controls | Implemented and locally verified; English monthly summaries by default |
 | 5 | Deployment hardening and pilot | Container configuration and runbook prepared; GitHub push approved; live deployment/pilot pending configuration and migrations |
 

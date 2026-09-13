@@ -4,6 +4,9 @@ Implemented and locally verified on 2026-09-10; the owner approved the GitHub pu
 Production migration and live LINE deployment remain pending. No live LINE messages
 were sent during implementation or verification.
 
+BD follow-up was retired on 2026-09-13. Its dashboard, API routes, Discord
+commands, and automatic record creation are removed. Legacy records are retained.
+
 ## Confirmed channel timing
 
 The owner's requested setup is **immediate Discord incident alerts** and
@@ -25,11 +28,11 @@ dispatcher configuration, and an enabled matching Discord rule.
 
 - Next.js dashboard: overview counts and trends, paginated incident and report
   search, attack/country/date filters, separate **Dark web URL** column and evidence
-  details, human report review, source health, watchlists, private BD pipeline,
+  details, human report review, source health, watchlists,
   alert rules, LINE group settings and delivery history.
 - FastAPI checks Supabase Auth on each request and an explicit database membership.
   Viewers see public-source intelligence; analysts can review reports and manage
-  customer follow-up; administrators also manage alert rules and LINE groups.
+  watchlists; administrators also manage alert rules and LINE groups.
 - LINE webhook validates the signature before parsing. A durable inbox deduplicates
   events. Only membership events and recognized commands are retained; ordinary
   group conversation is discarded. Reply tokens and command text are removed after

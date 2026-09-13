@@ -107,32 +107,6 @@ class WatchlistRead(WatchlistBase):
     id: uuid.UUID
 
 
-FollowUpStatus = Literal["not_contacted", "contacted", "meeting_booked", "po_won", "dead"]
-
-
-class PipelineBase(BaseModel):
-    incident_id: uuid.UUID
-    watchlist_id: uuid.UUID
-    follow_up_status: FollowUpStatus = "not_contacted"
-    owner_note: str | None = None
-
-
-class PipelineCreate(PipelineBase):
-    pass
-
-
-class PipelineUpdate(BaseModel):
-    follow_up_status: FollowUpStatus | None = None
-    owner_note: str | None = None
-
-
-class PipelineRead(PipelineBase):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    updated_at: datetime
-
-
 class AlertRuleBase(BaseModel):
     name: str | None = None
     match_mode: Literal["any_thailand", "watchlist_only", "group", "sector"] | None = None

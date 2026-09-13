@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from packages.scraper.events import emit
 from packages.scraper.normalize import normalize_name
-from packages.shared.models import Incident, IncidentSource, Pipeline, Watchlist
+from packages.shared.models import Incident, IncidentSource, Watchlist
 from packages.shared.schemas import IncidentCreate
 from packages.shared.timeutils import ensure_utc, utcnow
 from packages.shared.urls import clean_url
@@ -24,7 +24,6 @@ class IngestResult:
     merged: int = 0
     skipped: int = 0
     watchlist_hits: int = 0
-    pipeline_rows: int = 0
     new_incidents: list[Incident] = field(default_factory=list)
 
 
@@ -174,7 +173,7 @@ def upgrade_legacy_incidents(session: Session) -> int:
             )
         )
         if collision is not None:
-            # Never silently reparent BD links or delete previously duplicated rows.
+            # Never silently reparent archived links or delete previously duplicated rows.
             raise ValueError(f"legacy source collision at incident {incident.id}; review required")
         session.add(evidence)
         session.flush()
@@ -313,16 +312,7 @@ def ingest_payloads(
         result.new_incidents.append(incident)
 
         for entry in hits:
-            session.add(
-                Pipeline(
-                    incident_id=incident.id,
-                    watchlist_id=entry.id,
-                    follow_up_status="not_contacted",
-                    updated_at=now,
-                )
-            )
             result.watchlist_hits += 1
-            result.pipeline_rows += 1
             logger.warning("WATCHLIST HIT: %s matched %s", data["victim_name"], entry.name)
 
         if not alert_eligible:

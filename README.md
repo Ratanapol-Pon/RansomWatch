@@ -1,7 +1,7 @@
 # RansomWatch TH
 
-Public-source cyberattack monitoring, an authenticated dashboard, LINE group
-summaries, and a private BD follow-up pipeline, with a focus on Thailand.
+Public-source cyberattack monitoring, an authenticated dashboard, Discord alerts,
+and LINE group summaries, with a focus on Thailand.
 Stack and phases are defined in `PLAN.md` (source of truth). Agent rules in `AGENTS.md`.
 
 ## Broader threat monitoring upgrade
@@ -25,8 +25,7 @@ uv run python -m packages.scraper.run --source-health # new-feed status and fres
 ```
 
 Upgrades 3–4 add the **dashboard and LINE group bot**, including the separate
-**Dark web URL** column, report review, source health, customer watchlists and
-private BD follow-up. New LINE groups default to **English monthly summaries**,
+**Dark web URL** column, report review, source health, and customer watchlists. New LINE groups default to **English monthly summaries**,
 scheduled on the **first day of the month at 08:00 Bangkok**, after activation.
 
 **Channel timing:** Discord dispatches each new eligible incident immediately after
@@ -38,8 +37,8 @@ so this is immediate on discovery, not necessarily at the time of the attack.
 Apply all three upgrade migrations before starting the new API and worker. See
 the [dashboard and LINE launch runbook](docs/UPGRADE_PHASE_3_4.md) for account
 setup, environment variables, Docker services, and verification results.
-Implementation is locally verified; hosted migration, deployment and a live LINE
-pilot have not yet been performed.
+The dashboard, API, collector, Discord bot, and LINE worker are deployed on Railway.
+LINE group activation and a live group pilot remain operator setup steps.
 
 ```bash
 uv run python -m apps.api.main        # authenticated dashboard API + LINE webhook
@@ -49,12 +48,16 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
+BD follow-up was removed on 2026-09-13: the board, API routes, Discord commands,
+and automatic follow-up creation are retired. Existing records remain archived;
+watchlist matching and alert delivery continue.
+
 ## Features (MVP — tags `phase-0`…`phase-4`, `mvp`)
 
 - **Ingestion (Phase 1):** ransomware.live API v2 collector for Thailand (`country=TH`),
   one-time 12-month backfill + 15-min scheduler that never crashes on collector errors.
-  Dedup on `(normalized_name, group_name)`, raw payload merge, watchlist matching with
-  automatic BD-pipeline rows, `incident.created` events.
+  Evidence-based deduplication, raw payload merge, watchlist matching, and
+  `incident.created` events.
 - **Alerts (Phase 3):** Supabase Edge Function (`alert-dispatcher`) triggered by a DB
   webhook on `incidents` INSERT → Discord webhook (red embed + role mention for
   watchlist hits, orange otherwise) + Resend email. Every delivery written to
@@ -63,9 +66,8 @@ pnpm dev
 - **Discord bot (Phase 4):**
   - Slash commands (everyone): `/latest [n]`, `/victim <name>`, `/group <name>`,
     `/stats [7d|30d|90d]` (matplotlib chart), `/brief [topic] [period]` (≤5 sourced,
-    speakable bullets), `/pipeline` (BD funnel).
-  - Slash commands (admin role only): `/watch <company>`, `/unwatch <company>`,
-    `/pipeline_update <company> <status>`.
+    speakable bullets).
+  - Slash commands (admin role only): `/watch <company>`, `/unwatch <company>`.
   - Free-text Q&A in `#ask-ransomwatch`: LLM tool-calling into read-only DB query
     functions. Answers come **only** from tool results, always with `source_url`
     citations — the bot never invents incidents. No records → it says so.
@@ -96,7 +98,7 @@ uv sync                # installs Python 3.12 + deps
 
 Apply the migration in the Supabase SQL editor
 (or `psql $DATABASE_URL -f supabase/migrations/0001_init.sql`).
-Creates: incidents, watchlist, pipeline, alert_rules, alert_log.
+Creates: incidents, watchlist, pipeline (legacy archive only), alert_rules, alert_log.
 
 ### Environment variables
 
@@ -200,8 +202,8 @@ max 10 retries — Settings → Deploy).
 ## Tests
 
 ```bash
-uv run pytest -q                                              # 52 passed
-node --test supabase/functions/_shared/alerting_test.ts       # 15 passed
+uv run python -m pytest -q
+node --test supabase/functions/_shared/alerting_test.ts
 ```
 
 ## Backlog (deferred — see PLAN.md §3)

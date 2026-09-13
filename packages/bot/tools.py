@@ -12,7 +12,6 @@ class QueryProvider(Protocol):
     def search_victim(self, name: str) -> list[Incident]: ...
     def group_profile(self, name: str) -> tuple[str, list[Incident]]: ...
     def all_incidents(self) -> list[Incident]: ...
-    def pipeline_overview(self) -> Any: ...
 
 
 def incident_dict(i: Incident) -> dict[str, Any]:
@@ -112,14 +111,6 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_pipeline",
-            "description": "BD follow-up funnel for watchlist companies.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
 ]
 
 TOOL_NAMES = {t["function"]["name"] for t in TOOL_SCHEMAS}
@@ -157,13 +148,6 @@ def dispatch_tool(name: str, args: dict[str, Any], q: QueryProvider) -> dict[str
             topic = str(args.get("topic") or "")
             bullets = build_brief(q.all_incidents(), topic, period)
             return {"topic": topic or "Thailand overall", "period": period, "bullets": bullets}
-        if name == "get_pipeline":
-            overview = q.pipeline_overview()
-            return {
-                "funnel": overview.funnel_text(),
-                "companies_hit": overview.companies_hit,
-                "by_status": overview.by_status,
-            }
     except Exception as exc:  # tool errors must not crash the chat loop
         return {"error": f"{type(exc).__name__}: {exc}"}
     return {"error": f"unhandled tool {name!r}"}

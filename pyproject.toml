@@ -1,7 +1,7 @@
 [project]
 name = "ransomwatch-th"
 version = "0.1.0"
-description = "RansomWatch TH - Thai ransomware victim monitoring + BD pipeline"
+description = "RansomWatch TH - Cyberattack monitoring and alerts"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",

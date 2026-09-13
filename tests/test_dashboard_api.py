@@ -10,7 +10,7 @@ from test_foundation_db import migrate, payload
 from apps.api.auth import Principal, current_user, database
 from apps.api.main import app
 from packages.scraper.pipeline import ingest_payloads
-from packages.shared.models import Incident, ThreatReport
+from packages.shared.models import Incident, Pipeline, ThreatReport
 
 
 @pytest.fixture
@@ -67,14 +67,14 @@ def test_incident_filters_details_and_no_raw_payload(api):
 def test_viewer_cannot_access_customer_data_or_mutate(api):
     client, conn, user = api
     user.role = "viewer"
-    for path in ("/api/watchlist", "/api/pipeline", "/api/alert-rules", "/api/line/groups"):
+    for path in ("/api/watchlist", "/api/alert-rules", "/api/line/groups"):
         assert client.get(path).status_code == 403
     assert client.post("/api/watchlist", json={"name": "Example"}).status_code == 403
     assert client.get("/api/incidents?watchlist_only=true").status_code == 403
     assert client.get("/api/summary").json()["watchlist_hits"] is None
 
 
-def test_watchlist_match_creates_pipeline_and_linked_delete_is_blocked(api):
+def test_watchlist_matches_without_creating_follow_up_records(api):
     client, conn, user = api
     with Session(bind=conn) as session:
         ingest_payloads(session, [payload()])
@@ -85,15 +85,40 @@ def test_watchlist_match_creates_pipeline_and_linked_delete_is_blocked(api):
     assert response.status_code == 200, response.text
     identity = response.json()["id"]
     assert client.post("/api/watchlist", json={"name": "Example Company"}).status_code == 409
-    pipeline = client.get("/api/pipeline").json()
-    assert len(pipeline) == 1
-    updated = client.patch(
-        "/api/pipeline/" + pipeline[0]["id"],
-        json={"follow_up_status": "meeting_booked", "owner_note": "Call on Monday"},
-    )
-    assert updated.status_code == 200
-    assert updated.json()["follow_up_status"] == "meeting_booked"
+    assert client.get("/api/pipeline").status_code == 404
+    assert client.patch("/api/pipeline/" + str(uuid4()), json={}).status_code == 404
+    with Session(bind=conn) as session:
+        assert session.scalar(select(Incident)).watchlist_hit is True
+        assert session.scalar(select(Pipeline)) is None
+    assert client.delete("/api/watchlist/" + identity).status_code == 200
+
+
+def test_legacy_follow_up_records_are_preserved(api):
+    from uuid import UUID
+
+    from packages.bot.queries import Queries
+
+    client, conn, user = api
+    with Session(bind=conn) as session:
+        incident = ingest_payloads(session, [payload()]).new_incidents[0]
+        incident_id = incident.id
+        session.commit()
+    identity = client.post("/api/watchlist", json={"name": "Example Company"}).json()["id"]
+    with Session(bind=conn) as session:
+        archived = Pipeline(
+            incident_id=incident_id,
+            watchlist_id=UUID(identity),
+            follow_up_status="meeting_booked",
+            owner_note="Historical note",
+        )
+        session.add(archived)
+        session.commit()
+    assert client.get("/api/pipeline").status_code == 404
     assert client.delete("/api/watchlist/" + identity).status_code == 409
+    with Session(bind=conn) as session:
+        with pytest.raises(ValueError, match="archived records"):
+            Queries(session).remove_watch("Example Company")
+        assert session.scalar(select(Pipeline)).owner_note == "Historical note"
 
 
 def test_report_review_and_explicit_promotion_are_idempotent(api):

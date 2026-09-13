@@ -60,7 +60,7 @@ def command_text(session, group, command: str, now: datetime) -> str:
             "!latest · recent victim reports\n!company NAME · search organizations\n"
             "!reports · threat news and advisories\n!stats · last 30 days\n"
             "!brief · sourced briefing\n"
-            "Group filters apply. No private customer or BD notes are shared."
+            "Group filters apply. Private watchlist notes are not shared."
         )
     if name == "!stats":
         count = session.scalar(select(func.count()).select_from(base.subquery()))

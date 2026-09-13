@@ -12,7 +12,7 @@ from packages.bot.chatbot import run_chat
 from packages.bot.formatting import chunk_text, incident_list_text
 from packages.bot.llm import build_llm
 from packages.bot.permissions import ADMIN_ONLY_MESSAGE, is_admin
-from packages.bot.queries import PIPELINE_STATUSES, Queries
+from packages.bot.queries import Queries
 from packages.bot.stats import count_by_day, count_by_group, in_period, period_days
 from packages.shared.config import Settings, get_settings
 from packages.shared.db import get_session
@@ -20,7 +20,6 @@ from packages.shared.db import get_session
 logger = logging.getLogger(__name__)
 
 PERIOD_CHOICES = [app_commands.Choice(name=p, value=p) for p in ("7d", "30d", "90d")]
-STATUS_CHOICES = [app_commands.Choice(name=s, value=s) for s in PIPELINE_STATUSES]
 
 
 def _admin_check(admin_role_id: int | None):
@@ -156,43 +155,15 @@ class RansomWatchBot(commands.Bot):
         @_admin_check(self.admin_role_id)
         async def unwatch(interaction: discord.Interaction, company: str) -> None:
             await interaction.response.defer(ephemeral=True)
-            removed = await run(lambda q: q.remove_watch(company))()
+            try:
+                removed = await run(lambda q: q.remove_watch(company))()
+            except ValueError as exc:
+                await _reply(interaction, str(exc))
+                return
             if removed is None:
                 await _reply(interaction, f"'{company}' is not on the watchlist.")
             else:
                 await _reply(interaction, f"🗑️ Removed **{removed}** from the watchlist.")
-
-        @tree.command(name="pipeline", description="BD funnel view for watchlist companies")
-        async def pipeline(interaction: discord.Interaction) -> None:
-            await interaction.response.defer()
-            overview = await run(lambda q: q.pipeline_overview())()
-            lines = [f"**BD pipeline**\n\n{overview.funnel_text()}"]
-            for _p, w, i in overview.rows[:10]:
-                lines.append(
-                    f"• {w.name} — {_p.follow_up_status} (hit by {i.group_name or 'unknown'})"
-                )
-            await _reply(interaction, "\n".join(lines))
-
-        @tree.command(name="pipeline_update", description="Advance follow-up status (admin)")
-        @app_commands.describe(company="watchlist company", status="new follow-up status")
-        @app_commands.choices(status=STATUS_CHOICES)
-        @_admin_check(self.admin_role_id)
-        async def pipeline_update(
-            interaction: discord.Interaction, company: str, status: str
-        ) -> None:
-            await interaction.response.defer(ephemeral=True)
-            updated = await run(lambda q: q.update_pipeline(company, status))()
-            if updated == 0:
-                await _reply(
-                    interaction,
-                    f"No pipeline rows found for '{company}'. Is it on the watchlist "
-                    "with a recorded incident?",
-                )
-            else:
-                await _reply(
-                    interaction,
-                    f"✅ Updated {updated} pipeline row(s) for **{company}** → `{status}`.",
-                )
 
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot:

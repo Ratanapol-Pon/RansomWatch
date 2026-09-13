@@ -138,7 +138,7 @@ def test_repeat_poll_cross_source_evidence_and_repeat_attacks(db):
         first = ingest_payloads(session, [payload()])
         original_id = first.new_incidents[0].id
         assert first.inserted == 1
-        assert first.pipeline_rows == 1
+        assert first.watchlist_hits == 1
         for _ in range(3):
             assert ingest_payloads(session, [payload()]).inserted == 0
         assert session.get(Incident, original_id).raw == payload()
@@ -147,7 +147,7 @@ def test_repeat_poll_cross_source_evidence_and_repeat_attacks(db):
         assert ingest_payloads(session, [payload(published="2026-10-12T08:00:00Z")]).inserted == 1
         assert session.scalar(select(func.count()).select_from(Incident)) == 2
         assert session.scalar(select(func.count()).select_from(IncidentSource)) == 3
-        assert session.scalar(select(func.count()).select_from(Pipeline)) == 2
+        assert session.scalar(select(func.count()).select_from(Pipeline)) == 0
         assert session.scalar(text("select count(*) from delivered")) == 2
 
 

@@ -20,7 +20,6 @@ import {
   RefreshCw,
   Shield,
   Target,
-  Users,
   Plus,
   Inbox,
 } from "lucide-react";
@@ -44,13 +43,7 @@ import {
 
 type Row = Record<string, any>;
 type View =
-  | "overview"
-  | "incidents"
-  | "reports"
-  | "watchlist"
-  | "pipeline"
-  | "sources"
-  | "alerts";
+  "overview" | "incidents" | "reports" | "watchlist" | "sources" | "alerts";
 type FieldSpec = {
   key: string;
   label: string;
@@ -72,26 +65,13 @@ const ATTACKS = [
   "other",
 ];
 const CONFIDENCE = ["claimed", "reported", "confirmed", "disputed"];
-const STAGES = [
-  "not_contacted",
-  "contacted",
-  "meeting_booked",
-  "po_won",
-  "dead",
-];
 const LABELS: Record<string, string> = {
   overview: "Overview",
   incidents: "Victim incidents",
   reports: "Threat reports",
   watchlist: "Watchlist",
-  pipeline: "BD pipeline",
   sources: "Source health",
   alerts: "Alerts & LINE",
-  not_contacted: "Not contacted",
-  contacted: "Contacted",
-  meeting_booked: "Meeting booked",
-  po_won: "PO won",
-  dead: "Closed",
   digest: "Daily digest",
   monthly: "Monthly summary",
   immediate: "Immediate alerts",
@@ -416,12 +396,7 @@ export default function Dashboard() {
     { key: "overview", icon: LayoutDashboard },
     { key: "incidents", icon: Shield },
     { key: "reports", icon: FileSearch },
-    ...(canEdit
-      ? [
-          { key: "watchlist", icon: Target },
-          { key: "pipeline", icon: Users },
-        ]
-      : []),
+    ...(canEdit ? [{ key: "watchlist", icon: Target }] : []),
     { key: "sources", icon: Database },
     ...(role === "admin" ? [{ key: "alerts", icon: Bell }] : []),
   ];
@@ -951,50 +926,6 @@ export default function Dashboard() {
             )}
           </section>
         )}
-        {view === "pipeline" && (
-          <>
-            <p className="muted">
-              Private follow-up records. Open a card to update its status or
-              notes.
-            </p>
-            <section className="board">
-              {STAGES.map((stage) => (
-                <div className="lane" key={stage}>
-                  <h2>
-                    {label(stage)}{" "}
-                    <span className="badge">
-                      {items.filter((r) => r.follow_up_status === stage).length}
-                    </span>
-                  </h2>
-                  {items
-                    .filter((r) => r.follow_up_status === stage)
-                    .map((row) => (
-                      <button
-                        className="pipeline-card fullwidth"
-                        style={{ textAlign: "left" }}
-                        key={row.id}
-                        onClick={() => setModal({ kind: "pipeline", row })}
-                      >
-                        <strong>{row.company}</strong>
-                        <p
-                          className="small muted"
-                          style={{ margin: ".5rem 0" }}
-                        >
-                          {row.owner_note || "No follow-up note yet"}
-                        </p>
-                        <span className="small muted">
-                          {when(row.updated_at)}
-                        </span>
-                      </button>
-                    ))}
-                </div>
-              ))}
-            </section>
-            {!items.length && (
-              <Empty text="Matched watchlist incidents will create follow-up records here." />
-            )}
-          </>
-        )}
         {view === "sources" && (
           <section className="panel">
             <h2>Collection status</h2>
@@ -1050,7 +981,7 @@ export default function Dashboard() {
               <h2>LINE groups</h2>
               <p className="muted">
                 Invite the Official Account into a group. It appears here for
-                activation. Private BD notes are never included in group
+                activation. Private watchlist notes are never included in group
                 messages.
               </p>
               {data.groups?.length ? (
@@ -1176,7 +1107,6 @@ export default function Dashboard() {
                         incident: modal.row.victim_name,
                         report: modal.row.title,
                         watch: modal.row.id ? "Edit company" : "Add company",
-                        pipeline: modal.row.company,
                         line: "LINE group settings",
                         rule: "Alert rule",
                         promotion: "Create a victim incident",
@@ -1337,27 +1267,6 @@ export default function Dashboard() {
                         modal.row.id ? "PUT" : "POST",
                         body,
                       )
-                    }
-                  />
-                )}
-                {modal.kind === "pipeline" && (
-                  <Form
-                    initial={modal.row}
-                    fields={[
-                      {
-                        key: "follow_up_status",
-                        label: "Follow-up status",
-                        type: "select",
-                        options: STAGES,
-                      },
-                      {
-                        key: "owner_note",
-                        label: "Private follow-up note",
-                        type: "textarea",
-                      },
-                    ]}
-                    onSave={(body) =>
-                      save(`/pipeline/${modal.row.id}`, "PATCH", body)
                     }
                   />
                 )}

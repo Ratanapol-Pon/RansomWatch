@@ -117,6 +117,8 @@ class Watchlist(Base):
 
 
 class Pipeline(Base):
+    """Legacy follow-up records retained for history; no active feature writes here."""
+
     __tablename__ = "pipeline"
     __table_args__ = (
         UniqueConstraint("incident_id", "watchlist_id", name="uq_pipeline_incident_watchlist"),

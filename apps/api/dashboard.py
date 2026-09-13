@@ -28,7 +28,6 @@ from packages.shared.schemas import (
     AttackType,
     Confidence,
     EvidenceFields,
-    FollowUpStatus,
 )
 from packages.shared.timeutils import utcnow
 
@@ -285,18 +284,6 @@ def save_watch(session, body, row=None):
     for incident in session.scalars(select(Incident)):
         if match_watchlist(incident.normalized_name or "", incident.domain, [row]):
             incident.watchlist_hit = True
-            if not session.scalar(
-                select(Pipeline.id).where(
-                    Pipeline.incident_id == incident.id, Pipeline.watchlist_id == row.id
-                )
-            ):
-                session.add(
-                    Pipeline(
-                        incident_id=incident.id,
-                        watchlist_id=row.id,
-                        follow_up_status="not_contacted",
-                    )
-                )
     return record(row)
 
 
@@ -313,36 +300,11 @@ def edit_watch(identity: UUID, body: WatchBody, session: Session = Depends(datab
 @router.delete("/watchlist/{identity}", dependencies=[Depends(editor)])
 def delete_watch(identity: UUID, session: Session = Depends(database)):
     if session.scalar(select(Pipeline.id).where(Pipeline.watchlist_id == identity).limit(1)):
-        raise HTTPException(409, "Company has BD history; retain it to preserve follow-up records")
+        raise HTTPException(
+            409, "Company is referenced by archived records; retain it to preserve history"
+        )
     session.delete(require_row(session, Watchlist, identity))
     return {"ok": True}
-
-
-@router.get("/pipeline", dependencies=[Depends(editor)])
-def pipeline(session: Session = Depends(database)):
-    rows = session.execute(
-        select(Pipeline, Watchlist.name, Incident.victim_name)
-        .join(Watchlist, Pipeline.watchlist_id == Watchlist.id)
-        .join(Incident, Pipeline.incident_id == Incident.id)
-        .order_by(Pipeline.updated_at.desc())
-    ).all()
-    return [
-        {**record(row), "company": company, "victim_name": victim} for row, company, victim in rows
-    ]
-
-
-class PipelineBody(BaseModel):
-    follow_up_status: FollowUpStatus
-    owner_note: str | None = Field(default=None, max_length=3000)
-
-
-@router.patch("/pipeline/{identity}", dependencies=[Depends(editor)])
-def update_pipeline(identity: UUID, body: PipelineBody, session: Session = Depends(database)):
-    row = require_row(session, Pipeline, identity)
-    for key, value in body.model_dump().items():
-        setattr(row, key, value)
-    row.updated_at = utcnow()
-    return record(row)
 
 
 @router.get("/sources")
