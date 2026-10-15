@@ -12,16 +12,20 @@ import { createClient, type Session } from "@supabase/supabase-js";
 import {
   ArrowUpRight,
   Bell,
+  BellRing,
   Database,
   FileSearch,
+  Globe,
+  Inbox,
   LayoutDashboard,
   ListFilter,
   LogOut,
+  Radar,
   RefreshCw,
   Shield,
   Target,
   Plus,
-  Inbox,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Area,
@@ -490,56 +494,88 @@ export default function Dashboard() {
   if (!session)
     return (
       <main className="login">
-        <section className="panel login-box">
-          <div className="brand" style={{ marginBottom: "2rem" }}>
-            <Shield size={30} />
-            <span>RansomWatch</span>
-          </div>
-          <p className="eyebrow">Threat intelligence workspace</p>
-          <h1>Stay ahead of the next conversation.</h1>
-          <p className="muted">
-            Sourced incidents, emerging threats, and customer follow-up in one
-            place.
-          </p>
-          {!supabase ? (
-            <div className="notice">
-              Sign-in is not configured yet. Ask your administrator to connect
-              this dashboard to your Supabase project.
+        <div className="login-inner">
+          <section className="login-hero">
+            <div className="brand" style={{ marginBottom: "1.75rem" }}>
+              <Shield size={30} />
+              <span>RansomWatch</span>
             </div>
-          ) : (
-            <form onSubmit={signIn}>
-              <label>
-                Email
-                <input
-                  autoComplete="username"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  autoComplete="current-password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
-              <Button disabled={authBusy}>
-                {authBusy ? "Signing in…" : "Sign in"}
-              </Button>
-              <small>Access is limited to invited workspace members.</small>
-            </form>
-          )}
-          {error && (
-            <div role="alert" className="error-banner">
-              {error}
-            </div>
-          )}
-        </section>
+            <p className="eyebrow">Threat intelligence workspace</p>
+            <h1>
+              Stay ahead of the next <em>conversation.</em>
+            </h1>
+            <p className="lede">
+              Sourced incidents, emerging threats, and customer follow-up in one
+              place — monitored around the clock for Thailand.
+            </p>
+            <ul className="login-points">
+              <li>
+                <Radar size={18} />
+                <div>
+                  <strong>Continuous collection</strong>
+                  <span>Leak sites, forums, and advisories polled 24/7.</span>
+                </div>
+              </li>
+              <li>
+                <Globe size={18} />
+                <div>
+                  <strong>Thailand-first coverage</strong>
+                  <span>Local relevance with global advisories in context.</span>
+                </div>
+              </li>
+              <li>
+                <BellRing size={18} />
+                <div>
+                  <strong>Alerts where you work</strong>
+                  <span>LINE, Discord, and email — immediate or digest.</span>
+                </div>
+              </li>
+            </ul>
+          </section>
+          <section className="panel login-box">
+            <h2>Sign in to continue</h2>
+            <p className="muted" style={{ marginBottom: "1.25rem" }}>
+              Access is limited to invited workspace members.
+            </p>
+            {!supabase ? (
+              <div className="notice">
+                Sign-in is not configured yet. Ask your administrator to connect
+                this dashboard to your Supabase project.
+              </div>
+            ) : (
+              <form onSubmit={signIn}>
+                <label>
+                  Email
+                  <input
+                    autoComplete="username"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Password
+                  <input
+                    autoComplete="current-password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </label>
+                <Button disabled={authBusy} className="fullwidth">
+                  {authBusy ? "Signing in…" : "Sign in"}
+                </Button>
+              </form>
+            )}
+            {error && (
+              <div role="alert" className="error-banner">
+                {error}
+              </div>
+            )}
+          </section>
+        </div>
       </main>
     );
   return (
@@ -579,6 +615,7 @@ export default function Dashboard() {
             <p className="eyebrow">Threat monitoring / Thailand</p>
             <h1>{LABELS[view]}</h1>
             <span className="small muted">
+              {loadedAt && <span className="live-dot" aria-hidden="true" />}
               {loadedAt
                 ? `Updated ${when(loadedAt)} ICT`
                 : "Connecting to your workspace"}
@@ -694,34 +731,45 @@ export default function Dashboard() {
         {view === "overview" && (
           <>
             <section className="metrics">
-              {[
+              {(
                 [
-                  "Victim incidents",
-                  data.incidents,
-                  "Observed in selected period",
-                ],
-                [
-                  "Threat reports",
-                  data.reports,
-                  "News, campaigns & advisories",
-                ],
-                [
-                  "Awaiting review",
-                  data.review_pending,
-                  "Across the review queue",
-                ],
-                [
-                  "Watchlist matches",
-                  data.watchlist_hits,
-                  canEdit ? "Companies you follow" : "Available to analysts",
-                ],
-              ].map(([title, count, note]) => (
+                  [
+                    "Victim incidents",
+                    data.incidents,
+                    "Observed in selected period",
+                    Shield,
+                  ],
+                  [
+                    "Threat reports",
+                    data.reports,
+                    "News, campaigns & advisories",
+                    FileSearch,
+                  ],
+                  [
+                    "Awaiting review",
+                    data.review_pending,
+                    "Across the review queue",
+                    Inbox,
+                  ],
+                  [
+                    "Watchlist matches",
+                    data.watchlist_hits,
+                    canEdit ? "Companies you follow" : "Available to analysts",
+                    Target,
+                  ],
+                ] as Array<[string, number | undefined, string, LucideIcon]>
+              ).map(([title, count, note, Icon]) => (
                 <div className="panel metric" key={title}>
-                  <p>{title}</p>
-                  <strong>
-                    {count == null ? "—" : Number(count).toLocaleString()}
-                  </strong>
-                  <p>{note}</p>
+                  <div>
+                    <p>{title}</p>
+                    <strong>
+                      {count == null ? "—" : Number(count).toLocaleString()}
+                    </strong>
+                    <p>{note}</p>
+                  </div>
+                  <div className="metric-icon" aria-hidden="true">
+                    <Icon size={18} />
+                  </div>
                 </div>
               ))}
             </section>
